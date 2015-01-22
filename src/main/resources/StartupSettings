@@ -1,0 +1,14 @@
+JDBCConnectionString=jdbc:mysql://localhost/test
+JDBCDriverClassName=com.mysql.jdbc.Driver
+DBUsername=camel_app
+DBPassword=p@ssw0rd1
+LogDir=C:\\Logs\\
+LogFile=JellyFish.log
+BaseSettings=BaseSettings
+WorkingDir=C:\\Logs\\Working\\
+SQLFileContentColumn=Config_Contents
+SQLFileNameColumn=File_Name
+SQLFilePathColumn=File_Path
+SQLGetSpringConfigs=SELECT File_Name, Config_Contents, File_Path from test.spring_configs where Config_Active='true';?dataSource=dataSource
+SQLGetConfigFile=SELECT setting_name, setting_value from test.jellyfish_config;?dataSource=dataSource
+MQBrokerURL=tcp://localhost:616

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	 http://www.springframework.org/schema/beans/spring-beans.xsd
+	 http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+     http://www.springframework.org/schema/context 
+     http://www.springframework.org/schema/context/spring-context.xsd">
+
+<!-- Testing -->
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+	  <property name="connectionFactory">
+	    <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+	      <property name="brokerURL" value="tcp://localhost:616"/>
+	    </bean>
+	  </property>
+	</bean>
+<!-- Testing -->
+
+	<bean id="bridgePropertyPlaceholder" class="org.apache.camel.spring.spi.BridgePropertyPlaceholderConfigurer">
+  	  <property name="location" value=".\\StartupSettings"/>
+	</bean>	
+	
+	<bean id="propertyFileInputStream" class="org.springframework.core.io.ClassPathResource">
+      <constructor-arg type="java.lang.String" value=".\\StartupSettings" />
+	</bean>
+	
+	<bean id="configDownloadComplete" class="gm.projects.jellyfish.tentacles.MutexLock" />
+	
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+	    <property name="driverClassName" value="${JDBCDriverClassName}" />
+	    <property name="url" value="${JDBCConnectionString}" />
+	    <property name="username" value="${DBUsername}" />
+	    <property name="password" value="${DBPassword}" />
+	</bean>
+	
+	<bean id="sqlRowRetriever" class="gm.projects.jellyfish.tentacles.SQLColumnToString">
+		<property name="fileContentsColumn" value="${SQLFileContentColumn}" />
+		<property name="fileNameColumn" value="${SQLFileNameColumn}" />
+		<property name="filePathColumn" value="${SQLFilePathColumn}" />
+	</bean>
+	
+  <camelContext id="camel-startup" xmlns="http://camel.apache.org/schema/spring">    
+  	<route id="getSpringConfigs" streamCache="true" autoStartup="true">
+    	<from uri="direct:SpringConfig"/>
+  		<to uri="sql:{{SQLGetSpringConfigs}}" />
+  		<split>
+  			<simple>body</simple>
+  			<to uri="log:getSpringConfigs?level=INFO&amp;showStreams=true" />
+  			<to uri="bean:sqlRowRetriever" />
+  			<to uri="file://?autoCreate=true" />
+  		</split>
+  	</route>
+  	
+  	<route id="saveSettingsFile" streamCache="true" autoStartup="true">
+    	<from uri="direct:configFile"/>
+    	<setBody><constant></constant></setBody>
+    	<to uri="file:/{{WorkingDir}}?fileName={{BaseSettings}}" />
+  		<to uri="sql:{{SQLGetConfigFile}}" />
+  		<to uri="log:saveSettingsFile?level=INFO&amp;showStreams=true" />
+  		<split>
+  			<simple>body</simple>
+  			<setBody>
+  				<simple>${body['setting_name']}=${body['setting_value']}\n</simple>
+  			</setBody>
+	  		<to uri="file:/{{WorkingDir}}?fileName={{BaseSettings}}&amp;fileExist=Append" />
+  		</split>
+  		<to uri="controlbus:route?routeId=saveSettingsFile&amp;action=stop&amp;async=true" />   		
+  	</route>
+  	
+  	<route id="startup" autoStartup="true">
+  		<from uri="timer://direct:start"/>
+  		<onCompletion>
+  			<to uri="bean:configDownloadComplete?method=releaseSemaphore" />
+	  		<setBody><simple>Start Up Route Completed</simple></setBody>
+	  		<to uri="log:startupRoute?level=INFO" />
+  		</onCompletion> 
+  		
+  		<setBody><simple>Start Up Route Started</simple></setBody>
+  		<to uri="log:startupRoute?level=INFO" /> 
+  		<to uri="direct:SpringConfig" /> 
+  		<to uri="direct:configFile" />
+  		<to uri="bean:configDownloadComplete?method=releaseSemaphore" />		
+  		<to uri="controlbus:route?routeId=startup&amp;action=stop&amp;async=true" /> 
+  	</route>
+  
+  </camelContext>
+  
+</beans>

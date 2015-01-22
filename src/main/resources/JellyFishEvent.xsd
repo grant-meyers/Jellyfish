@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.example.org/JellyFishEvent" xmlns:tns="http://www.example.org/JellyFishEvent" elementFormDefault="qualified">
+
+    <element name="GUID" type="string"></element>
+
+    <element name="FileName" type="string"></element>
+
+    <element name="Format" type="string"></element>
+</schema>
